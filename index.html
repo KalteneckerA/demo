@@ -16,32 +16,17 @@
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>JSON feltöltés / betöltés / módosítás – Firebase + GitHub Pages</h1>
-    <p class="muted">Ez az egyfájlos példa GitHub Pages-ről fut, és a Firebase Firestore-ba ment egy tetszőleges JSON objektumot.</p>
+  <button onclick="setVar('counter', 5, 'settings/app')">Mentés</button>
+  <button onclick="getVar('settings/app').then(data => console.log(data))">Betöltés</button>
 
-    <div class="card">
-      <label>Dokumentum útvonal:
-        <input id="docPath" value="settings/app" />
-      </label>
-
-      <label>JSON tartalom:</label>
-      <textarea id="jsonArea">{ "counter": 0, "message": "Szia, világ!" }</textarea>
-
-      <button onclick="loadData()">Betöltés</button>
-      <button onclick="saveData()">Mentés</button>
-      <button onclick="updateCounter()">Számláló növelése</button>
-
-      <p id="status" class="muted">Állapot: <em>indítás…</em></p>
-    </div>
-  </div>
+  
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
-    // TODO: ide illeszd be a saját Firebase config objektumodat!
+    
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyBoiO6PgTETIVclGbvONYelgfU-mKMsfDM",
       authDomain: "fir-447ea.firebaseapp.com",
@@ -50,72 +35,59 @@
       messagingSenderId: "467200226135",
       appId: "1:467200226135:web:79bfb1345c0e1f3e170412"
     };
-
+    
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
-
-    document.getElementById("saveBtn").addEventListener("click", saveData);
-    document.getElementById("loadBtn").addEventListener("click", loadData);
-    document.getElementById("updateBtn").addEventListener("click", updateCounter);
-
+    
     // Anonim bejelentkezés
-    signInAnonymously(auth).catch(err => {
-      setStatus("Hiba az anonim belépéskor: " + err.message);
-    });
-
+    signInAnonymously(auth).catch(err => console.error("Anonim login hiba:", err));
+    
     onAuthStateChanged(auth, user => {
-      if (user) {
-        setStatus("Bejelentkezve (anonim). UID: " + user.uid);
-      } else {
-        setStatus("Nincs bejelentkezve.");
-      }
+      if(user) console.log("Bejelentkezve anonim módon:", user.uid);
+      else console.log("Nincs bejelentkezve.");
     });
-
-    async function loadData(){
-      const path = document.getElementById("docPath").value;
+    
+    // -----------------------------
+    // JSON változó kezelő függvények
+    // -----------------------------
+    
+    /**
+     * Frissít egy változót a JSON dokumentumban
+     * @param {string} varName - a kulcs neve a JSON-ban
+     * @param {*} value - az új érték
+     * @param {string} path - dokumentum útvonala pl. "settings/app"
+     */
+    async function setVar(varName, value, path) {
       const ref = doc(db, ...path.split("/"));
       const snap = await getDoc(ref);
-      if(snap.exists()){
-        document.getElementById("jsonArea").value = JSON.stringify(snap.data(), null, 2);
-        setStatus("Betöltve.");
-      } else {
-        setStatus("Nincs ilyen dokumentum.");
-      }
+    
+      let data = {};
+      if(snap.exists()) data = snap.data();
+    
+      data[varName] = value;
+      await setDoc(ref, data);
+      return data;
     }
+    
+    /**
+     * Betölt egy JSON dokumentumot
+     * @param {string} path - dokumentum útvonala pl. "settings/app"
+     * @returns {object|null} - a JSON objektum vagy null, ha nem létezik
+     */
+    async function getVar(path) {
+      const ref = doc(db, ...path.split("/"));
+      const snap = await getDoc(ref);
+      if(snap.exists()) return snap.data();
+      else return null;
+    }
+    
+    // -----------------------------
+    // Globális elérhetőség HTML onclick-hoz
+    window.setVar = setVar;
+    window.getVar = getVar;
 
-    async function saveData(){
-      try {
-        const path = document.getElementById("docPath").value;
-        const data = JSON.parse(document.getElementById("jsonArea").value);
-        const ref = doc(db, ...path.split("/"));
-        await setDoc(ref, data);
-        setStatus("Sikeresen mentve.");
-      } catch(err){
-        setStatus("Hiba: "+err);
-      }
-    }
+</script>
 
-    async function updateCounter(){
-      try {
-        const path = document.getElementById("docPath").value;
-        const ref = doc(db, ...path.split("/"));
-        const snap = await getDoc(ref);
-        let current = 0;
-        if(snap.exists()){
-          current = snap.data().counter || 0;
-        }
-        await updateDoc(ref, { counter: current + 1 });
-        setStatus("Számláló növelve!");
-        loadData();
-      } catch(err){
-        setStatus("Hiba frissítéskor: "+err);
-      }
-    }
-
-    function setStatus(msg){
-      document.getElementById("status").innerText = "Állapot: "+msg;
-    }
-  </script>
 </body>
 </html>
