@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JSON tárolás Firebase-ben (GitHub Pages-ről)</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial; }
+    body { margin: 0; padding: 2rem; background: #0b0c10; color: #eaf0f6; }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: clamp(1.4rem, 2.6vw, 2rem); margin: 0 0 1rem; }
+    .card { background: #161a22; border: 1px solid #2a3342; border-radius: 16px; padding: 1rem; box-shadow: 0 10px 24px rgba(0,0,0,.25); }
+    textarea, input { width: 100%; padding: .75rem; border-radius: 12px; border: 1px solid #2a3342; background: #0e131b; color: #eaf0f6; }
+    button { margin-top: .6rem; appearance: none; border: 0; background: #4f46e5; color: #fff; padding: .7rem 1rem; border-radius: 12px; cursor: pointer; font-weight: 600; }
+    .muted { color: #94a3b8; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>JSON feltöltés / betöltés / módosítás – Firebase + GitHub Pages</h1>
+    <p class="muted">Ez az egyfájlos példa GitHub Pages-ről fut, és a Firebase Firestore-ba ment egy tetszőleges JSON objektumot.</p>
+
+    <div class="card">
+      <label>Dokumentum útvonal:
+        <input id="docPath" value="settings/app" />
+      </label>
+
+      <label>JSON tartalom:</label>
+      <textarea id="jsonArea">{ "counter": 0, "message": "Szia, világ!" }</textarea>
+
+      <button onclick="loadData()">Betöltés</button>
+      <button onclick="saveData()">Mentés</button>
+      <button onclick="updateCounter()">Számláló növelése</button>
+
+      <p id="status" class="muted">Állapot: <em>indítás…</em></p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    // TODO: ide illeszd be a saját Firebase config objektumodat!
+    const firebaseConfig = {
+      apiKey: "",
+      authDomain: "",
+      projectId: "",
+      storageBucket: "",
+      messagingSenderId: "",
+      appId: ""
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    async function loadData(){
+      const path = document.getElementById("docPath").value;
+      const ref = doc(db, ...path.split("/"));
+      const snap = await getDoc(ref);
+      if(snap.exists()){
+        document.getElementById("jsonArea").value = JSON.stringify(snap.data(), null, 2);
+        setStatus("Betöltve.");
+      } else {
+        setStatus("Nincs ilyen dokumentum.");
+      }
+    }
+
+    async function saveData(){
+      try {
+        const path = document.getElementById("docPath").value;
+        const data = JSON.parse(document.getElementById("jsonArea").value);
+        const ref = doc(db, ...path.split("/"));
+        await setDoc(ref, data);
+        setStatus("Sikeresen mentve.");
+      } catch(err){
+        setStatus("Hiba: "+err);
+      }
+    }
+
+    async function updateCounter(){
+      try {
+        const path = document.getElementById("docPath").value;
+        const ref = doc(db, ...path.split("/"));
+        const snap = await getDoc(ref);
+        let current = 0;
+        if(snap.exists()){
+          current = snap.data().counter || 0;
+        }
+        await updateDoc(ref, { counter: current + 1 });
+        setStatus("Számláló növelve!");
+        loadData();
+      } catch(err){
+        setStatus("Hiba frissítéskor: "+err);
+      }
+    }
+
+    function setStatus(msg){
+      document.getElementById("status").innerText = "Állapot: "+msg;
+    }
+  </script>
+</body>
+</html>
