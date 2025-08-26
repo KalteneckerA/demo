@@ -55,6 +55,10 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
+    document.getElementById("saveBtn").addEventListener("click", saveData);
+    document.getElementById("loadBtn").addEventListener("click", loadData);
+    document.getElementById("updateBtn").addEventListener("click", updateCounter);
+
     // Anonim bejelentkezés
     signInAnonymously(auth).catch(err => {
       setStatus("Hiba az anonim belépéskor: " + err.message);
